@@ -1,0 +1,39 @@
+[project]
+name = "mcp-show-on-kindle"
+version = "2026.10.09.000000"
+description = "A MCP server that shows a file on your Kindle, immediately, via KOReader"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]==2.1.1",
+]
+authors = [
+  { name="Rune Kaagaard" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license-files = ["LICENSE"]
+packages = [
+    {include = "mcp_show_on_kindle"}
+]
+
+[project.scripts]
+mcp-show-on-kindle = "mcp_show_on_kindle.server:main"
+
+[project.urls]
+Homepage = "https://github.com/runekaagaard/mcp-show-on-kindle"
+Issues = "https://github.com/runekaagaard/mcp-show-on-kindle/issues"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+]
