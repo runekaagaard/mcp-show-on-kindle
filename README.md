@@ -25,13 +25,28 @@ every start.
 
 ## Setup on the computer
 
-    uv sync
-    KINDLE_ALLOWED_DIRECTORIES=/some/dir uv run mcp-show-on-kindle
+Add to your MCP client config (Claude Desktop, Claude Code, ...):
 
-The server speaks stdio by default. For a long-running service, use
---transport streamable-http --port 7004 and this client config:
+    {
+      "mcpServers": {
+        "show_on_kindle": {
+          "command": "uvx",
+          "args": ["--from", "mcp-show-on-kindle==0",
+                   "--refresh-package", "mcp-show-on-kindle", "mcp-show-on-kindle"],
+          "env": {
+            "KINDLE_ALLOWED_DIRECTORIES": "/some/dir"
+          }
+        }
+      }
+    }
+
+Or run it as a long-running service with --transport streamable-http --port 7004
+and this client config:
 
     {"mcpServers": {"show_on_kindle": {"type": "http", "url": "http://localhost:7004/mcp"}}}
+
+For hacking on a checkout: uv sync, then point the client at
+"command": "uv", "args": ["run", "--directory", "/path/to/checkout", "mcp-show-on-kindle"].
 
 ## Configuration
 
@@ -57,6 +72,14 @@ nothing else.
     make tests-run
 
 ssh and sockets are mocked; the tests run without a Kindle.
+
+## My Other LLM Projects
+
+- **[MCP Alchemy](https://github.com/runekaagaard/mcp-alchemy)** - Connect Claude Desktop to databases for exploring schema and running SQL.
+- **[MCP Redmine](https://github.com/runekaagaard/mcp-redmine)** - Let Claude Desktop manage your Redmine projects and issues.
+- **[MCP Notmuch Sendmail](https://github.com/runekaagaard/mcp-notmuch-sendmail)** - Email assistant for Claude Desktop using notmuch.
+- **[Diffpilot](https://github.com/runekaagaard/diffpilot)** - Multi-column git diff viewer with file grouping and tagging.
+- **[Claude Local Files](https://github.com/runekaagaard/claude-local-files)** - Access local files in Claude Desktop artifacts.
 
 ## License
 
