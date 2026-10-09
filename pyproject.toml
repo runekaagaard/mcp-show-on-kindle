@@ -1,6 +1,6 @@
 [project]
 name = "mcp-show-on-kindle"
-version = "2026.10.09.000000"
+version = "2026.10.09.184938"
 description = "A MCP server that shows a file on your Kindle, immediately, via KOReader"
 readme = "README.md"
 requires-python = ">=3.10"

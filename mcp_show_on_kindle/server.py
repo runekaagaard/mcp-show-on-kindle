@@ -7,7 +7,7 @@ from mcp.server.mcpserver.utilities.logging import get_logger
 
 ### Constants ###
 
-VERSION = "2026.10.09.000000"
+VERSION = "2026.10.09.184938"
 
 # Constants from environment
 KINDLE_HOST = os.environ.get("KINDLE_HOST", "")

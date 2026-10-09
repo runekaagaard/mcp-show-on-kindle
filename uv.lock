@@ -398,7 +398,7 @@ cli = [
 
 [[package]]
 name = "mcp-show-on-kindle"
-version = "2026.10.9.0"
+version = "2026.10.9.184938"
 source = { editable = "." }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
