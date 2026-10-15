@@ -1,12 +1,31 @@
 # mcp-show-on-kindle
 
-An MCP server with a single tool, show(file_path), which copies a file to a
-Kindle running KOReader and opens it on the screen.
+An MCP server with one tool, show(file_path). You tell your LLM to put a
+document on your Kindle, and a few seconds later the document is on the
+Kindle, open, on screen. That is the entire feature set.
 
-The Kindle is located on the local network by its KOReader SSH banner, the file
-is copied over the SSH server plugin, and the running KOReader is told to open
-it through the HTTP inspector plugin. The inspector is reached over the same
-SSH connection, so the only thing on the wire is SSH.
+It works like this: the server finds the Kindle on the local network by its
+KOReader SSH banner, copies the file in over KOReader's SSH server plugin, and
+then asks the running KOReader to open it through the HTTP inspector plugin.
+The inspector is only ever reached through the SSH session against the
+Kindle's loopback, so the only thing on the wire is SSH.
+
+Three details of the implementation deserve a mention, because each one cost
+me an evening:
+
+An e-reader's wifi radio sleeps very hard. Hard enough that the first sweep
+of the subnet usually finds nothing; its real job is to wake the radio up.
+The second sweep finds the Kindle. So the sweep runs twice, 64 probes wide,
+and the result is cached for next time.
+
+Dropbear has no scp. The file is copied with `cat >` over the SSH session's
+stdin, like it is 1987, and this works fine.
+
+When KOReader opens a document it tears down the whole UI and builds a new
+one, and the HTTP inspector goes down with it. A successful open therefore
+looks exactly like a failure: the request that worked is the one whose
+connection died. The server tells the two apart by polling afterwards and
+asking the new UI which document it has open.
 
 ## Setup on the Kindle
 
@@ -66,13 +85,13 @@ For hacking on a checkout: uv sync, then point the client at
 
 ## Security
 
-The banner only locates the Kindle. Authentication is the SSH host key, pinned
-on first contact under a fixed alias; a different host presenting the same
-banner fails. File reads are restricted to KINDLE_ALLOWED_DIRECTORIES, and
-filenames are reduced to [A-Za-z0-9._-] before they are used in a remote
+The banner only locates the Kindle. Authentication is the SSH host key,
+pinned on first contact under a fixed alias; a different host presenting the
+same banner fails. File reads are restricted to KINDLE_ALLOWED_DIRECTORIES,
+and filenames are reduced to [A-Za-z0-9._-] before they are used in a remote
 command. With the iptables rule in place the Kindle exposes nothing but
-public-key SSH. Set KINDLE_SSH_KEY to a separate
-passphrase-less key that grants access to nothing else.
+public-key SSH. Set KINDLE_SSH_KEY to a separate passphrase-less key that
+grants access to nothing else.
 
 ## Tests
 
