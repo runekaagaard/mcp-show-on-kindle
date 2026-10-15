@@ -12,9 +12,16 @@ SSH connection, so the only thing on the wire is SSH.
 
 Enable two KOReader plugins on autostart:
 
-  * SSH server: port 2222, your public key in
-    /mnt/us/koreader/settings/SSH/authorized_keys
+  * SSH server: port 2222
   * HTTP inspector: port 8080
+
+Generate a dedicated passphrase-less key and install it. A service has no ssh-agent,
+so a passphrase-protected key cannot work; a dedicated key also grants access to
+nothing but this device:
+
+    ssh-keygen -t ed25519 -N "" -f ~/.config/mcp-show-on-kindle/id_ed25519
+    cat ~/.config/mcp-show-on-kindle/id_ed25519.pub | \
+      ssh -p 2222 root@KINDLE "cat >> /mnt/us/koreader/settings/SSH/authorized_keys"
 
 The inspector has no authentication, so block it from the network:
 
@@ -55,6 +62,8 @@ For hacking on a checkout: uv sync, then point the client at
     KINDLE_SSH_PORT             default 2222
     KINDLE_HTTP_PORT            default 8080
     KINDLE_DIR                  target directory, default /mnt/us/documents/llm
+    KINDLE_SSH_KEY              path to the dedicated private key (default: ssh's normal
+                                identity resolution, which needs an agent for passphrase keys)
     KINDLE_KNOWN_HOSTS          pinned host key, default ~/.config/mcp-show-on-kindle/known_hosts
 
 ## Security
@@ -64,8 +73,8 @@ on first contact under a fixed alias; a different host presenting the same
 banner fails. File reads are restricted to KINDLE_ALLOWED_DIRECTORIES, and
 filenames are reduced to [A-Za-z0-9._-] before they are used in a remote
 command. With the iptables rule in place the Kindle exposes nothing but
-public-key SSH. Use a separate passphrase-less key that grants access to
-nothing else.
+public-key SSH. Set KINDLE_SSH_KEY to a separate
+passphrase-less key that grants access to nothing else.
 
 ## Tests
 

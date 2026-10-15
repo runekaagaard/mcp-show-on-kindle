@@ -206,3 +206,31 @@ def test_show_relays_copy_failure(monkeypatch, tmp_path):
     monkeypatch.setattr(server, "ssh",
                         lambda host, command, stdin=None: subprocess.CompletedProcess([], 1, b"", b"disk full"))
     assert "Copy failed: disk full" in server.show(str(f))
+
+
+def test_ssh_uses_dedicated_key_when_configured(monkeypatch, tmp_path):
+    monkeypatch.setattr(server, "KNOWN_HOSTS", tmp_path / "kh")
+    monkeypatch.setattr(server, "KINDLE_SSH_KEY", "/some/key")
+    captured = {}
+
+    def fake_run(cmd, input=None, capture_output=None, timeout=None):
+        captured["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, b"", b"")
+
+    monkeypatch.setattr(server.subprocess, "run", fake_run)
+    server.ssh("h", "true")
+    assert "/some/key" in captured["cmd"] and "IdentitiesOnly=yes" in captured["cmd"]
+
+
+def test_sweep_retries_once_for_dozing_radios(monkeypatch, tmp_path):
+    monkeypatch.setattr(server, "CACHE", tmp_path / "host")
+    monkeypatch.setattr(server, "own_ip", lambda: "10.0.0.2")
+    monkeypatch.setattr(server, "is_kindle", lambda ip: ip == "10.0.0.7")
+    probes = {}
+
+    def flaky_port_open(ip, port, timeout=3.0):
+        probes[ip] = probes.get(ip, 0) + 1
+        return ip == "10.0.0.7" and probes[ip] >= 2  # radio answers the second time it is asked
+
+    monkeypatch.setattr(server, "port_open", flaky_port_open)
+    assert server.find_kindle() == ("10.0.0.7", None)

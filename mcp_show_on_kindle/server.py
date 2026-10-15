@@ -14,6 +14,10 @@ KINDLE_HOST = os.environ.get("KINDLE_HOST", "")
 KINDLE_SSH_PORT = int(os.environ.get("KINDLE_SSH_PORT", "2222"))
 KINDLE_HTTP_PORT = int(os.environ.get("KINDLE_HTTP_PORT", "8080"))
 KINDLE_DIR = os.environ.get("KINDLE_DIR", "/mnt/us/documents/llm")
+# Dedicated passphrase-less key. Without it ssh falls back to default identities, which
+# tend to be passphrase-protected and agent-dependent - and there is no agent in a
+# service started at boot.
+KINDLE_SSH_KEY = os.environ.get("KINDLE_SSH_KEY", "")
 
 # Directories the model may read files from (secure by default - disabled if not set)
 KINDLE_ALLOWED_DIRECTORIES = [
@@ -85,15 +89,17 @@ def find_kindle():
 
     net = src.rsplit(".", 1)[0]
     candidates = [f"{net}.{i}" for i in range(1, 255)]
-    with ThreadPoolExecutor(max_workers=64) as ex:
-        open_ips = [ip for ip, ok in zip(candidates, ex.map(
-            lambda ip: port_open(ip, KINDLE_SSH_PORT), candidates)) if ok]
-
-    for ip in open_ips:
-        if is_kindle(ip):
-            CACHE.parent.mkdir(parents=True, exist_ok=True)
-            CACHE.write_text(ip)
-            return ip, None
+    # Two passes: a dozing e-reader radio drops the first packets, and the first pass
+    # is what wakes it.
+    for _ in range(2):
+        with ThreadPoolExecutor(max_workers=64) as ex:
+            open_ips = [ip for ip, ok in zip(candidates, ex.map(
+                lambda ip: port_open(ip, KINDLE_SSH_PORT), candidates)) if ok]
+        for ip in open_ips:
+            if is_kindle(ip):
+                CACHE.parent.mkdir(parents=True, exist_ok=True)
+                CACHE.write_text(ip)
+                return ip, None
 
     return None, (f"Kindle not found on {net}.0/24 - is it awake, running KOReader with the "
                   "SSH plugin, and on the same Wi-Fi as this machine?")
@@ -103,8 +109,9 @@ def find_kindle():
 
 def ssh(host, command, stdin=None):
     KNOWN_HOSTS.parent.mkdir(parents=True, exist_ok=True)
+    key = ["-i", KINDLE_SSH_KEY, "-o", "IdentitiesOnly=yes"] if KINDLE_SSH_KEY else []
     return subprocess.run(
-        ["ssh", "-p", str(KINDLE_SSH_PORT), "-o", "ConnectTimeout=10",
+        ["ssh", *key, "-p", str(KINDLE_SSH_PORT), "-o", "ConnectTimeout=10",
          "-o", "StrictHostKeyChecking=accept-new",
          "-o", f"UserKnownHostsFile={KNOWN_HOSTS}",
          "-o", "HostKeyAlias=kindle",
