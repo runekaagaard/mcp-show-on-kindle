@@ -55,7 +55,7 @@ Add to your MCP client config (Claude Desktop, Claude Code, ...):
       "mcpServers": {
         "show_on_kindle": {
           "command": "uvx",
-          "args": ["--from", "mcp-show-on-kindle==2026.10.09.184938",
+          "args": ["--from", "mcp-show-on-kindle==2026.10.15.174202",
                    "--refresh-package", "mcp-show-on-kindle", "mcp-show-on-kindle"],
           "env": {
             "KINDLE_ALLOWED_DIRECTORIES": "/some/dir"
