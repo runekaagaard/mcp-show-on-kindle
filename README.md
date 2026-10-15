@@ -15,9 +15,7 @@ Enable two KOReader plugins on autostart:
   * SSH server: port 2222
   * HTTP inspector: port 8080
 
-Generate a dedicated passphrase-less key and install it. A service has no ssh-agent,
-so a passphrase-protected key cannot work; a dedicated key also grants access to
-nothing but this device:
+Install a dedicated key:
 
     ssh-keygen -t ed25519 -N "" -f ~/.config/mcp-show-on-kindle/id_ed25519
     cat ~/.config/mcp-show-on-kindle/id_ed25519.pub | \
