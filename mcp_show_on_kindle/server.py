@@ -148,7 +148,9 @@ def open_on_kindle(host, kindle_path):
     for method in ["switchDocument", "openFile"]:
         ssh(host, f"wget -q -O- -T 15 '{base}/{method}/{arg}/'")
 
-    for _ in range(5):
+    # 8 polls: each is a full ssh handshake, and a slow network plus a slow UI rebuild
+    # can push the first successful read past 10 seconds.
+    for _ in range(8):
         time.sleep(2)
         result = ssh(host, f"wget -q -O- -T 5 '{base}/document/file'")
         if result.returncode == 0 and result.stdout.decode(errors="replace").strip().strip('"') == kindle_path:
