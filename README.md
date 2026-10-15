@@ -1,55 +1,32 @@
 # mcp-show-on-kindle
 
-An MCP server with one tool, show(file_path). You tell your LLM to put a
-document on your Kindle, and a few seconds later the document is on the
-Kindle, open, on screen. That is the entire feature set.
+MCP server with one tool, show(file_path). Copies a file to a Kindle running
+KOReader and opens it on screen.
 
-It works like this: the server finds the Kindle on the local network by its
-KOReader SSH banner, copies the file in over KOReader's SSH server plugin, and
-then asks the running KOReader to open it through the HTTP inspector plugin.
-The inspector is only ever reached through the SSH session against the
-Kindle's loopback, so the only thing on the wire is SSH.
+It finds the Kindle on the LAN by its KOReader SSH banner, copies the file
+over the SSH plugin, then tells KOReader to open it through the HTTP
+inspector plugin. The inspector is called over the same SSH connection, so
+only SSH is on the wire.
 
-Three details of the implementation deserve a mention, because each one cost
-me an evening:
+## Kindle setup
 
-An e-reader's wifi radio sleeps very hard. Hard enough that the first sweep
-of the subnet usually finds nothing; its real job is to wake the radio up.
-The second sweep finds the Kindle. So the sweep runs twice, 64 probes wide,
-and the result is cached for next time.
+Enable the SSH server (port 2222) and HTTP inspector (port 8080) plugins in
+KOReader, on autostart.
 
-Dropbear has no scp. The file is copied with `cat >` over the SSH session's
-stdin, like it is 1987, and this works fine.
-
-When KOReader opens a document it tears down the whole UI and builds a new
-one, and the HTTP inspector goes down with it. A successful open therefore
-looks exactly like a failure: the request that worked is the one whose
-connection died. The server tells the two apart by polling afterwards and
-asking the new UI which document it has open.
-
-## Setup on the Kindle
-
-Enable two KOReader plugins on autostart:
-
-  * SSH server: port 2222
-  * HTTP inspector: port 8080
-
-Install a dedicated key:
+Install a key:
 
     ssh-keygen -t ed25519 -N "" -f ~/.config/mcp-show-on-kindle/id_ed25519
     cat ~/.config/mcp-show-on-kindle/id_ed25519.pub | \
       ssh -p 2222 root@KINDLE "cat >> /mnt/us/koreader/settings/SSH/authorized_keys"
 
-The inspector has no authentication, so block it from the network:
+The inspector has no authentication. Block it from the network:
 
     ssh -p 2222 root@KINDLE "iptables -I INPUT 1 -p tcp --dport 8080 ! -i lo -j DROP"
 
-Add the same line near the top of /mnt/us/koreader/koreader.sh to apply it on
-every start.
+Put the same line near the top of /mnt/us/koreader/koreader.sh so it survives
+a reboot.
 
-## Setup on the computer
-
-Add to your MCP client config (Claude Desktop, Claude Code, ...):
+## Client setup
 
     {
       "mcpServers": {
@@ -64,13 +41,12 @@ Add to your MCP client config (Claude Desktop, Claude Code, ...):
       }
     }
 
-Or run it as a long-running service with --transport streamable-http --port 7004
-and this client config:
+Or run it as a service with --transport streamable-http --port 7004 and use
 
     {"mcpServers": {"show_on_kindle": {"type": "http", "url": "http://localhost:7004/mcp"}}}
 
-For hacking on a checkout: uv sync, then point the client at
-"command": "uv", "args": ["run", "--directory", "/path/to/checkout", "mcp-show-on-kindle"].
+From a checkout: uv sync, then "command": "uv", "args": ["run", "--directory",
+"/path/to/checkout", "mcp-show-on-kindle"].
 
 ## Configuration
 
@@ -79,25 +55,28 @@ For hacking on a checkout: uv sync, then point the client at
     KINDLE_SSH_PORT             default 2222
     KINDLE_HTTP_PORT            default 8080
     KINDLE_DIR                  target directory, default /mnt/us/documents/llm
-    KINDLE_SSH_KEY              path to the dedicated private key (default: ssh's normal
-                                identity resolution, which needs an agent for passphrase keys)
+    KINDLE_SSH_KEY              private key to use. Default: whatever ssh picks.
     KINDLE_KNOWN_HOSTS          pinned host key, default ~/.config/mcp-show-on-kindle/known_hosts
 
-## Security
+## Notes
 
-The banner only locates the Kindle. Authentication is the SSH host key,
-pinned on first contact under a fixed alias; a different host presenting the
-same banner fails. File reads are restricted to KINDLE_ALLOWED_DIRECTORIES,
-and filenames are reduced to [A-Za-z0-9._-] before they are used in a remote
-command. With the iptables rule in place the Kindle exposes nothing but
-public-key SSH. Set KINDLE_SSH_KEY to a separate passphrase-less key that
-grants access to nothing else.
+The Kindle's wifi sleeps hard, so the subnet scan runs twice; the first pass
+mostly just wakes it up. Dropbear has no scp, so the file goes over stdin
+with cat. Opening a document restarts KOReader's UI, and the inspector with
+it, so the open request always fails; the server polls afterwards to see
+what is open.
+
+The banner only finds the Kindle. What authenticates it is the SSH host key,
+pinned on first contact under a fixed alias. Reads are limited to
+KINDLE_ALLOWED_DIRECTORIES, filenames are reduced to [A-Za-z0-9._-] before
+they go into a remote command, and with the iptables rule the Kindle exposes
+nothing but ssh.
 
 ## Tests
 
     make tests-run
 
-ssh and sockets are mocked; the tests run without a Kindle.
+ssh and sockets are mocked.
 
 ## My Other LLM Projects
 
